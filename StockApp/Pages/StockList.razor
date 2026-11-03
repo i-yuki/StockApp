@@ -1,0 +1,106 @@
+@page "/"
+@inject AuthService Auth
+@inject StockService Stocks
+@inject NavigationManager Navigation
+
+<PageTitle>在庫一覧 - 在庫管理</PageTitle>
+
+<MudText Typo="Typo.h5" GutterBottom="true">在庫一覧</MudText>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+    <MudSelect T="long?" Label="商品グループ" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Value="_groupId" ValueChanged="OnGroupChangedAsync" Disabled="_loading" Style="max-width: 320px;">
+        @foreach (var group in _groups)
+        {
+            <MudSelectItem T="long?" Value="@((long?)group.Id)">@group.Name</MudSelectItem>
+        }
+    </MudSelect>
+    <MudIconButton Icon="@Icons.Material.Filled.Refresh" aria-label="再読み込み" Disabled="_loading || _groupId is null"
+                   OnClick="LoadStocksAsync" />
+</MudStack>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3" role="alert">
+        @_error
+        <MudButton Size="Size.Small" Color="Color.Inherit" OnClick="InitializeAsync">再試行</MudButton>
+    </MudAlert>
+}
+
+<MudTable Items="_stocks" Loading="_loading" Dense="true" Hover="true" Breakpoint="Breakpoint.Xs">
+    <HeaderContent>
+        <MudTh>在庫アイテム</MudTh>
+        <MudTh Style="text-align: right;">在庫数</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="在庫アイテム">@context.ItemName</MudTd>
+        <MudTd DataLabel="在庫数" Style="text-align: right;">@context.Qty</MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText>在庫データがありません。</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private List<ItemGroupDto> _groups = [];
+    private List<ItemStockDto> _stocks = [];
+    private long? _groupId;
+    private bool _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsSignedIn)
+        {
+            Navigation.NavigateTo("login", replace: true);
+            return;
+        }
+
+        await InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
+        await RunAsync(async () =>
+        {
+            _groups = await Stocks.GetItemGroupsAsync();
+            _groupId ??= _groups.FirstOrDefault()?.Id;
+            await LoadStocksCoreAsync();
+        });
+    }
+
+    private async Task OnGroupChangedAsync(long? groupId)
+    {
+        _groupId = groupId;
+        await LoadStocksAsync();
+    }
+
+    private Task LoadStocksAsync() => RunAsync(LoadStocksCoreAsync);
+
+    private async Task LoadStocksCoreAsync()
+    {
+        _stocks = _groupId is { } id ? await Stocks.GetItemStocksAsync(id) : [];
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            await action();
+        }
+        catch (SessionExpiredException)
+        {
+            Navigation.NavigateTo("login", replace: true);
+        }
+        catch (StockServiceException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
