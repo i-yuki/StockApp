@@ -1,6 +1,7 @@
 @page "/"
 @inject AuthService Auth
 @inject StockService Stocks
+@inject StockListState ListState
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 
@@ -74,7 +75,7 @@
         await RunAsync(async () =>
         {
             _groups = await Stocks.GetItemGroupsAsync();
-            _groupId ??= _groups.FirstOrDefault()?.Id;
+            _groupId = _groups.Any(g => g.Id == ListState.GroupId) ? ListState.GroupId : _groups.FirstOrDefault()?.Id;
             await LoadStocksCoreAsync();
         });
     }
@@ -82,6 +83,7 @@
     private async Task OnGroupChangedAsync(long? groupId)
     {
         _groupId = groupId;
+        ListState.GroupId = groupId;
         await LoadStocksAsync();
     }
 

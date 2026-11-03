@@ -16,5 +16,6 @@ builder.Services.AddSingleton(supabaseOptions);
 builder.Services.AddSingleton(new HttpClient());
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<StockService>();
+builder.Services.AddSingleton<StockListState>();
 
 await builder.Build().RunAsync();
