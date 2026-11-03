@@ -1,0 +1,88 @@
+@page "/login"
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+<PageTitle>ログイン - 在庫管理</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h5" GutterBottom="true">在庫管理システム</MudText>
+
+        <EditForm Model="_model" OnValidSubmit="SignInAsync">
+            <MudTextField @bind-Value="_model.Email" Label="メールアドレス" InputType="InputType.Email"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3"
+                          Immediate="true" Disabled="_busy" Required="true"
+                          RequiredError="メールアドレスを入力してください。" AutoFocus="true" />
+
+            <MudTextField @bind-Value="_model.Password" Label="パスワード"
+                          InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-1"
+                          Immediate="true" Disabled="_busy" Required="true"
+                          RequiredError="パスワードを入力してください。" />
+
+            <MudCheckBox @bind-Value="_showPassword" Label="パスワードを表示する" Class="mb-2" />
+
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                       FullWidth="true" Disabled="_busy">
+                @(_busy ? "ログイン情報を確認しています…" : "ログイン")
+            </MudButton>
+        </EditForm>
+
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4" role="alert">@_error</MudAlert>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private readonly LoginModel _model = new();
+    private bool _busy;
+    private bool _showPassword;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        if (Auth.IsSignedIn)
+        {
+            Navigation.NavigateTo("", replace: true);
+        }
+    }
+
+    private async Task SignInAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (await Auth.SignInAsync(_model.Email.Trim(), _model.Password.Trim()))
+            {
+                _model.Password = string.Empty;
+                Navigation.NavigateTo("", replace: true);
+            }
+            else
+            {
+                _error = "ログインに失敗しました。メールアドレスとパスワードを確認してください。";
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = "通信に失敗しました。ネットワーク接続を確認して再試行してください。";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
