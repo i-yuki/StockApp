@@ -1,0 +1,90 @@
+@page "/items/{ItemId:long}/history"
+@inject AuthService Auth
+@inject StockService Stocks
+@inject NavigationManager Navigation
+
+<PageTitle>入出庫履歴 - 在庫管理</PageTitle>
+
+<MudText Typo="Typo.h5" GutterBottom="true">@(string.IsNullOrEmpty(ItemName) ? "商品" : ItemName) の入出庫履歴</MudText>
+
+<MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-3" OnClick="GoBack">在庫一覧へ戻る</MudButton>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3" role="alert">
+        @_error
+        <MudButton Size="Size.Small" Color="Color.Inherit" OnClick="LoadAsync">再試行</MudButton>
+    </MudAlert>
+}
+
+<MudTable Items="_histories" Loading="_loading" Dense="true" Hover="true" Breakpoint="Breakpoint.Xs">
+    <HeaderContent>
+        <MudTh>区分</MudTh>
+        <MudTh Style="text-align: right;">数量</MudTh>
+        <MudTh>備考</MudTh>
+        <MudTh>登録日時</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="区分">
+            @if (context.Quantity < 0)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.ArrowUpward">出庫</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.ArrowDownward">入庫</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="数量" Style="text-align: right;">@context.Quantity</MudTd>
+        <MudTd DataLabel="備考">@context.Memo</MudTd>
+        <MudTd DataLabel="登録日時">@context.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")</MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText>履歴がありません。</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter] public long ItemId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "name")] public string? ItemName { get; set; }
+
+    private List<ItemHistoryDto> _histories = [];
+    private bool _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsSignedIn)
+        {
+            Navigation.NavigateTo("login", replace: true);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _histories = await Stocks.GetHistoryAsync(ItemId);
+        }
+        catch (SessionExpiredException)
+        {
+            Navigation.NavigateTo("login", replace: true);
+        }
+        catch (StockServiceException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("");
+}

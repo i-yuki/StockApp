@@ -42,6 +42,8 @@
                        OnClick="() => OpenStockDialogAsync(context, StockType.In)">入庫</MudButton>
             <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
                        OnClick="() => OpenStockDialogAsync(context, StockType.Out)">出庫</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Text" Class="ml-1"
+                       Href="@($"items/{context.ItemId}/history?name={Uri.EscapeDataString(context.ItemName)}")">履歴</MudButton>
         </MudTd>
     </RowTemplate>
     <NoRecordsContent>
