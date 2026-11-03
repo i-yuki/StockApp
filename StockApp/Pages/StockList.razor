@@ -29,10 +29,10 @@
     </MudAlert>
 }
 
-<MudTable Items="_stocks" Loading="_loading" Dense="true" Hover="true" Breakpoint="Breakpoint.Xs">
+<MudTable @ref="_table" Items="_stocks" Loading="_loading" Dense="true" Hover="true" Breakpoint="Breakpoint.Xs" RowsPerPage="10">
     <HeaderContent>
-        <MudTh>在庫アイテム</MudTh>
-        <MudTh Style="text-align: right;">在庫数</MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<ItemStockDto, object>(x => x.ItemName)">在庫アイテム</MudTableSortLabel></MudTh>
+        <MudTh Style="text-align: right;"><MudTableSortLabel SortBy="new Func<ItemStockDto, object>(x => x.Qty)">在庫数</MudTableSortLabel></MudTh>
         <MudTh>操作</MudTh>
     </HeaderContent>
     <RowTemplate>
@@ -47,12 +47,16 @@
                        Href="@($"items/{context.ItemId}/history?name={Uri.EscapeDataString(context.ItemName)}")">履歴</MudButton>
         </MudTd>
     </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new[] { 10 }" HidePageNumber="false" InfoFormat="{first_item}-{last_item} / {all_items}" />
+    </PagerContent>
     <NoRecordsContent>
         <MudText>在庫データがありません。</MudText>
     </NoRecordsContent>
 </MudTable>
 
 @code {
+    private MudTable<ItemStockDto>? _table;
     private List<ItemGroupDto> _groups = [];
     private List<ItemStockDto> _stocks = [];
     private long? _groupId;
@@ -92,6 +96,7 @@
     private async Task LoadStocksCoreAsync()
     {
         _stocks = _groupId is { } id ? await Stocks.GetItemStocksAsync(id) : [];
+        _table?.NavigateTo(0);
     }
 
     private async Task OpenStockDialogAsync(ItemStockDto item, StockType type)
