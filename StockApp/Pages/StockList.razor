@@ -2,6 +2,7 @@
 @inject AuthService Auth
 @inject StockService Stocks
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
 
 <PageTitle>在庫一覧 - 在庫管理</PageTitle>
 
@@ -31,10 +32,17 @@
     <HeaderContent>
         <MudTh>在庫アイテム</MudTh>
         <MudTh Style="text-align: right;">在庫数</MudTh>
+        <MudTh>操作</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="在庫アイテム">@context.ItemName</MudTd>
         <MudTd DataLabel="在庫数" Style="text-align: right;">@context.Qty</MudTd>
+        <MudTd DataLabel="操作">
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" Class="mr-1"
+                       OnClick="() => OpenStockDialogAsync(context, StockType.In)">入庫</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                       OnClick="() => OpenStockDialogAsync(context, StockType.Out)">出庫</MudButton>
+        </MudTd>
     </RowTemplate>
     <NoRecordsContent>
         <MudText>在庫データがありません。</MudText>
@@ -80,6 +88,36 @@
     private async Task LoadStocksCoreAsync()
     {
         _stocks = _groupId is { } id ? await Stocks.GetItemStocksAsync(id) : [];
+    }
+
+    private async Task OpenStockDialogAsync(ItemStockDto item, StockType type)
+    {
+        List<MemoDto> memos = [];
+        await RunAsync(async () => memos = await Stocks.GetMemosAsync());
+        if (_error is not null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<StockDialog>
+        {
+            { x => x.ItemId, item.ItemId },
+            { x => x.ItemName, item.ItemName },
+            { x => x.Type, type },
+            { x => x.Memos, memos },
+        };
+        var dialog = await DialogService.ShowAsync<StockDialog>(null, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: false })
+        {
+            Navigation.NavigateTo("login", replace: true);
+        }
+        else if (result is { Canceled: false })
+        {
+            await LoadStocksAsync();
+        }
     }
 
     private async Task RunAsync(Func<Task> action)

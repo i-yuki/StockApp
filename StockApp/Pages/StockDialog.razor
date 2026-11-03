@@ -1,0 +1,84 @@
+@inject StockService Stocks
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@ItemName @(Type == StockType.In ? "入庫" : "出庫")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudSelect T="int" @bind-Value="_quantity" Label="数量" Variant="Variant.Outlined" Margin="Margin.Dense"
+                   Class="mb-3" Disabled="_saving">
+            @for (var i = 1; i <= 9; i++)
+            {
+                <MudSelectItem T="int" Value="i">@i</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="string" @bind-Value="_selectedMemo" Label="備考" Variant="Variant.Outlined" Margin="Margin.Dense"
+                   Class="mb-3" Disabled="_saving">
+            <MudSelectItem T="string" Value="@string.Empty">(なし)</MudSelectItem>
+            @foreach (var memo in Memos)
+            {
+                <MudSelectItem T="string" Value="@memo.Text">@memo.Text</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudTextField @bind-Value="_extraMemo" Label="追加メモ" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Disabled="_saving" />
+
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3" role="alert">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_saving">閉じる</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">
+            @(_saving ? "保存中…" : "保存")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public long ItemId { get; set; }
+    [Parameter] public string ItemName { get; set; } = string.Empty;
+    [Parameter] public StockType Type { get; set; }
+    [Parameter] public List<MemoDto> Memos { get; set; } = [];
+
+    private int _quantity = 1;
+    private string _selectedMemo = string.Empty;
+    private string _extraMemo = string.Empty;
+    private bool _saving;
+    private string? _error;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            var memo = $"{_selectedMemo} {_extraMemo}".Trim();
+            await Stocks.InsertStockAsync(ItemId, Type, _quantity, memo);
+            Snackbar.Add($"{(Type == StockType.In ? "入庫" : "出庫")}を登録しました。", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (SessionExpiredException)
+        {
+            MudDialog.Close(DialogResult.Ok(false));
+        }
+        catch (StockServiceException ex)
+        {
+            _error = ex.Message;
+            _saving = false;
+        }
+    }
+}
