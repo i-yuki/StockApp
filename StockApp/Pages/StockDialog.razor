@@ -8,9 +8,9 @@
     <DialogContent>
         <MudSelect T="int" @bind-Value="_quantity" Label="数量" Variant="Variant.Outlined" Margin="Margin.Dense"
                    Class="mb-3" Disabled="_saving">
-            @for (var i = 1; i <= 10; i++)
+            @foreach (var quantity in Enumerable.Range(1, 10))
             {
-                <MudSelectItem T="int" Value="i">@i</MudSelectItem>
+                <MudSelectItem T="int" Value="quantity">@quantity</MudSelectItem>
             }
         </MudSelect>
 
